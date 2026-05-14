@@ -14,8 +14,8 @@ export default function HomePage() {
           <span className="text-xl text-[#2C2416] font-medium">Surface</span>
         </div>
         <nav className="flex items-center gap-8">
-          <Link href="/pulse" className="text-[#6B5D4D] hover:text-[#2C2416] transition-colors">
-            Pulse
+          <Link href="/read" className="text-[#6B5D4D] hover:text-[#2C2416] transition-colors">
+            The Read
           </Link>
           <Link
             href="/companion"
@@ -44,10 +44,10 @@ export default function HomePage() {
               Try the companion
             </Link>
             <Link
-              href="/pulse"
+              href="/read"
               className="px-8 py-4 text-[#2C2416] rounded-full text-lg border border-[#E8E0D5] hover:border-[#C9A962] transition-colors"
             >
-              See the Pulse
+              See The Read
             </Link>
           </div>
         </div>
@@ -100,18 +100,18 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Pulse */}
+            {/* The Read */}
             <div className="bg-white rounded-3xl p-8 border border-[#E8E0D5]">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#C9A962] to-[#8B7355] flex items-center justify-center mb-6">
                 <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
-              <h3 className="text-2xl text-[#2C2416] mb-4">The Pulse</h3>
+              <h3 className="text-2xl text-[#2C2416] mb-4">The Read</h3>
               <p className="text-[#6B5D4D] leading-relaxed mb-6">
                 Leadership doesn&apos;t need another dashboard. They need to understand what the
-                organization is trying to tell them. The Pulse synthesizes signals into
-                narrative intelligence.
+                organization is trying to tell them. The Read synthesizes signals into
+                narrative intelligence, delivered weekly.
               </p>
               <p className="text-[#A09080] text-sm">
                 Recurring tensions. Emerging patterns. Blind spots. Recommendations.
@@ -195,10 +195,10 @@ export default function HomePage() {
               Try the companion
             </Link>
             <Link
-              href="/pulse"
+              href="/read"
               className="px-8 py-4 text-white rounded-full text-lg border border-white/30 hover:border-white/60 transition-colors"
             >
-              See the Pulse
+              See The Read
             </Link>
           </div>
         </div>

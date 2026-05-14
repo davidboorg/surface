@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { ContributionMoment } from '@/components/ContributionMoment';
+import type { ContributionCard, QuotePermission } from '@/lib/supabase/types';
 
 interface Message {
   id: string;
@@ -25,9 +27,12 @@ export default function CompanionPage() {
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [showSavePrompt, setShowSavePrompt] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [showContributionPrompt, setShowContributionPrompt] = useState(false);
+  const [showContributionMoment, setShowContributionMoment] = useState(false);
+  const [contributionCard, setContributionCard] = useState<ContributionCard | null>(null);
+  const [isGeneratingCard, setIsGeneratingCard] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -47,13 +52,13 @@ export default function CompanionPage() {
     }
   }, [input]);
 
-  // Show save prompt after a few exchanges
+  // Show contribution prompt after a few exchanges
   useEffect(() => {
     const userMessages = messages.filter(m => m.role === 'user');
-    if (userMessages.length >= 2 && !showSavePrompt && !savedSuccess) {
-      setShowSavePrompt(true);
+    if (userMessages.length >= 2 && !showContributionPrompt && !showContributionMoment && !savedSuccess) {
+      setShowContributionPrompt(true);
     }
-  }, [messages, showSavePrompt, savedSuccess]);
+  }, [messages, showContributionPrompt, showContributionMoment, savedSuccess]);
 
   const handleSend = async () => {
     if (!input.trim() || isThinking) return;
@@ -100,21 +105,18 @@ export default function CompanionPage() {
     setIsThinking(false);
   };
 
-  const handleSaveSignal = async () => {
+  const handleGenerateCard = async () => {
     if (messages.length === 0) return;
 
-    setIsSaving(true);
-
-    // Get the first user message as the main content
-    const userMessages = messages.filter(m => m.role === 'user');
-    const mainContent = userMessages.map(m => m.content).join(' ');
+    setIsGeneratingCard(true);
+    setShowContributionPrompt(false);
 
     try {
-      const response = await fetch('/api/signals', {
+      const response = await fetch('/api/contribute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: mainContent,
+          action: 'generate_card',
           conversation: messages.map(m => ({
             role: m.role,
             content: m.content,
@@ -123,14 +125,50 @@ export default function CompanionPage() {
       });
 
       if (response.ok) {
-        setSavedSuccess(true);
-        setShowSavePrompt(false);
+        const data = await response.json();
+        setContributionCard(data.card);
+        setShowContributionMoment(true);
       }
     } catch (error) {
-      console.error('Save signal error:', error);
+      console.error('Generate card error:', error);
     }
 
-    setIsSaving(false);
+    setIsGeneratingCard(false);
+  };
+
+  const handleContribute = async (quotePermission: QuotePermission, attributedName?: string) => {
+    if (!contributionCard) return;
+
+    try {
+      const response = await fetch('/api/contribute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit',
+          conversation: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          conversationId,
+          card: contributionCard,
+          quotePermission,
+          attributedName,
+        }),
+      });
+
+      if (response.ok) {
+        setSavedSuccess(true);
+        setShowContributionMoment(false);
+        setContributionCard(null);
+      }
+    } catch (error) {
+      console.error('Contribute error:', error);
+    }
+  };
+
+  const handleCancelContribution = () => {
+    setShowContributionMoment(false);
+    setContributionCard(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -152,8 +190,11 @@ export default function CompanionPage() {
 
   const handleNewConversation = () => {
     setMessages([]);
-    setShowSavePrompt(false);
+    setShowContributionPrompt(false);
+    setShowContributionMoment(false);
+    setContributionCard(null);
     setSavedSuccess(false);
+    setConversationId(null);
   };
 
   return (
@@ -179,10 +220,10 @@ export default function CompanionPage() {
               </button>
             )}
             <Link
-              href="/pulse"
+              href="/read"
               className="text-sm text-[#6B5D4D] hover:text-[#2C2416] transition-colors"
             >
-              View Pulse
+              The Read
             </Link>
           </div>
         </div>
@@ -275,23 +316,23 @@ export default function CompanionPage() {
               </div>
             )}
 
-            {/* Save signal prompt */}
-            {showSavePrompt && !savedSuccess && (
+            {/* Contribution prompt */}
+            {showContributionPrompt && !savedSuccess && (
               <div className="flex justify-center">
                 <div className="bg-[#F5F0E8] rounded-2xl px-6 py-4 text-center max-w-md">
                   <p className="text-[#6B5D4D] mb-3">
-                    This sounds valuable. Would you like to add it to the organizational intelligence?
+                    This sounds valuable. Would you like to share it with leadership?
                   </p>
                   <div className="flex items-center justify-center gap-3">
                     <button
-                      onClick={handleSaveSignal}
-                      disabled={isSaving}
+                      onClick={handleGenerateCard}
+                      disabled={isGeneratingCard}
                       className="px-5 py-2 bg-[#2C2416] text-white rounded-full text-sm font-medium hover:bg-[#3D3425] transition-colors disabled:opacity-50"
                     >
-                      {isSaving ? 'Saving...' : 'Yes, surface this'}
+                      {isGeneratingCard ? 'Preparing...' : 'Yes, surface this'}
                     </button>
                     <button
-                      onClick={() => setShowSavePrompt(false)}
+                      onClick={() => setShowContributionPrompt(false)}
                       className="px-5 py-2 text-[#6B5D4D] text-sm hover:text-[#2C2416] transition-colors"
                     >
                       Not yet
@@ -301,7 +342,20 @@ export default function CompanionPage() {
               </div>
             )}
 
-            {/* Saved success */}
+            {/* Contribution moment modal */}
+            {showContributionMoment && contributionCard && (
+              <div className="flex justify-center">
+                <ContributionMoment
+                  card={contributionCard}
+                  defaultQuotePreference="anonymous"
+                  onContribute={handleContribute}
+                  onCancel={handleCancelContribution}
+                  isLoading={isGeneratingCard}
+                />
+              </div>
+            )}
+
+            {/* Contribution success */}
             {savedSuccess && (
               <div className="flex justify-center">
                 <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-4 text-center max-w-md">
@@ -309,13 +363,10 @@ export default function CompanionPage() {
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <p className="font-medium">Signal captured</p>
+                    <p className="font-medium">Contribution shared</p>
                   </div>
                   <p className="text-sm text-green-600 mt-1">
-                    Your observation is now part of the organizational intelligence.{' '}
-                    <Link href="/pulse" className="underline hover:no-underline">
-                      View the Pulse
-                    </Link>
+                    Your observation has been added to the organizational intelligence.
                   </p>
                 </div>
               </div>
