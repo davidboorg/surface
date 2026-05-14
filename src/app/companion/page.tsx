@@ -25,6 +25,9 @@ export default function CompanionPage() {
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -43,6 +46,14 @@ export default function CompanionPage() {
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
   }, [input]);
+
+  // Show save prompt after a few exchanges
+  useEffect(() => {
+    const userMessages = messages.filter(m => m.role === 'user');
+    if (userMessages.length >= 2 && !showSavePrompt && !savedSuccess) {
+      setShowSavePrompt(true);
+    }
+  }, [messages, showSavePrompt, savedSuccess]);
 
   const handleSend = async () => {
     if (!input.trim() || isThinking) return;
@@ -89,6 +100,39 @@ export default function CompanionPage() {
     setIsThinking(false);
   };
 
+  const handleSaveSignal = async () => {
+    if (messages.length === 0) return;
+
+    setIsSaving(true);
+
+    // Get the first user message as the main content
+    const userMessages = messages.filter(m => m.role === 'user');
+    const mainContent = userMessages.map(m => m.content).join(' ');
+
+    try {
+      const response = await fetch('/api/signals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: mainContent,
+          conversation: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
+
+      if (response.ok) {
+        setSavedSuccess(true);
+        setShowSavePrompt(false);
+      }
+    } catch (error) {
+      console.error('Save signal error:', error);
+    }
+
+    setIsSaving(false);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -106,6 +150,12 @@ export default function CompanionPage() {
     // Voice recording implementation would go here
   };
 
+  const handleNewConversation = () => {
+    setMessages([]);
+    setShowSavePrompt(false);
+    setSavedSuccess(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFBF5]">
       {/* Header */}
@@ -119,12 +169,22 @@ export default function CompanionPage() {
               Surface
             </span>
           </Link>
-          <Link
-            href="/pulse"
-            className="text-sm text-[#6B5D4D] hover:text-[#2C2416] transition-colors"
-          >
-            View Pulse
-          </Link>
+          <div className="flex items-center gap-4">
+            {messages.length > 0 && (
+              <button
+                onClick={handleNewConversation}
+                className="text-sm text-[#6B5D4D] hover:text-[#2C2416] transition-colors"
+              >
+                New conversation
+              </button>
+            )}
+            <Link
+              href="/pulse"
+              className="text-sm text-[#6B5D4D] hover:text-[#2C2416] transition-colors"
+            >
+              View Pulse
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -171,7 +231,7 @@ export default function CompanionPage() {
           </div>
         ) : (
           // Conversation
-          <div className="space-y-6 pb-32">
+          <div className="space-y-6 pb-48">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -211,6 +271,52 @@ export default function CompanionPage() {
                     </div>
                     <span className="text-sm text-[#A09080]">Thinking...</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Save signal prompt */}
+            {showSavePrompt && !savedSuccess && (
+              <div className="flex justify-center">
+                <div className="bg-[#F5F0E8] rounded-2xl px-6 py-4 text-center max-w-md">
+                  <p className="text-[#6B5D4D] mb-3">
+                    This sounds valuable. Would you like to add it to the organizational intelligence?
+                  </p>
+                  <div className="flex items-center justify-center gap-3">
+                    <button
+                      onClick={handleSaveSignal}
+                      disabled={isSaving}
+                      className="px-5 py-2 bg-[#2C2416] text-white rounded-full text-sm font-medium hover:bg-[#3D3425] transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? 'Saving...' : 'Yes, surface this'}
+                    </button>
+                    <button
+                      onClick={() => setShowSavePrompt(false)}
+                      className="px-5 py-2 text-[#6B5D4D] text-sm hover:text-[#2C2416] transition-colors"
+                    >
+                      Not yet
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Saved success */}
+            {savedSuccess && (
+              <div className="flex justify-center">
+                <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-4 text-center max-w-md">
+                  <div className="flex items-center justify-center gap-2 text-green-700">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="font-medium">Signal captured</p>
+                  </div>
+                  <p className="text-sm text-green-600 mt-1">
+                    Your observation is now part of the organizational intelligence.{' '}
+                    <Link href="/pulse" className="underline hover:no-underline">
+                      View the Pulse
+                    </Link>
+                  </p>
                 </div>
               </div>
             )}
