@@ -225,7 +225,7 @@ export const ideas: Idea[] = [
     contributor: employees[0], // Sara Lindqvist
     createdAt: '2024-01-14T14:20:00Z',
     themes: ['Internal Communication'],
-    status: 'in_progress',
+    status: 'exploring',
     reactions: { helpful: 11, similar: 5 },
   },
   {
@@ -246,7 +246,7 @@ export const ideas: Idea[] = [
     contributor: employees[3], // Erik Bergman
     createdAt: '2024-01-13T16:00:00Z',
     themes: ['Pricing Complexity'],
-    status: 'reviewing',
+    status: 'validating',
     reactions: { helpful: 18, similar: 4 },
   },
   {
@@ -323,7 +323,7 @@ export const ideas: Idea[] = [
     contributor: employees[7], // Anders Holm
     createdAt: '2024-01-15T15:20:00Z',
     themes: ['Onboarding Friction'],
-    status: 'reviewing',
+    status: 'validating',
     reactions: { helpful: 15, similar: 2 },
   },
   {

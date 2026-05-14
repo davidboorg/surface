@@ -222,9 +222,9 @@ export default function IdeaDetailPage() {
               </button>
             </div>
 
-            {(idea.research && idea.research.length > 0) || liveResearch.length > 0 ? (
+            {(idea.research && idea.research.length > 0) || (liveResearch && liveResearch.length > 0) ? (
               <div className="space-y-4">
-                {[...(idea.research || []), ...liveResearch].map((item) => (
+                {[...(idea.research || []), ...(liveResearch || [])].map((item) => (
                   <div
                     key={item.id}
                     className={`p-4 rounded-xl border-l-4 ${
