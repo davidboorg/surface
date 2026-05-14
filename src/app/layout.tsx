@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppLayout } from "@/components/layout/app-layout";
 
 export const metadata: Metadata = {
   title: "Surface — Organizational Intelligence",
@@ -14,8 +13,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
-        <AppLayout>{children}</AppLayout>
+      <body className="min-h-full">
+        {children}
       </body>
     </html>
   );

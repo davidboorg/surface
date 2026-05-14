@@ -1,270 +1,223 @@
 'use client';
 
 import Link from 'next/link';
-import { IconArrowRight, IconCheck, IconClock } from '@/components/ui/icons';
-import { pulseSynthesis, themes, ideas, challenges, company } from '@/data/demo';
 
-export default function PulsePage() {
-  const { headline, keyInsight, emergingThemes, tensions, recommendedActions, stats } = pulseSynthesis;
-
+export default function HomePage() {
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
-      {/* Date & Context */}
-      <div className="mb-8">
-        <p className="text-sm text-[var(--color-gray-500)]">
-          {new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })} · {company.name}
-        </p>
-      </div>
-
-      {/* Main Headline */}
-      <section className="mb-16">
-        <h1 className="pulse-headline text-balance mb-6">
-          {headline}
-        </h1>
-        <p className="text-xl text-[var(--color-gray-600)] leading-relaxed max-w-3xl">
-          {keyInsight}
-        </p>
-      </section>
-
-      {/* Stats Bar */}
-      <section className="grid grid-cols-4 gap-4 mb-16 p-6 bg-white rounded-2xl border border-[var(--color-gray-200)]">
-        <div>
-          <p className="text-3xl font-medium text-[var(--color-black)]">{stats.totalIdeas}</p>
-          <p className="text-sm text-[var(--color-gray-500)]">Total ideas</p>
+    <div className="min-h-screen bg-[#FFFBF5]">
+      {/* Navigation */}
+      <header className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#C9A962] to-[#8B7355] flex items-center justify-center">
+            <span className="text-white font-medium">S</span>
+          </div>
+          <span className="text-xl text-[#2C2416] font-medium">Surface</span>
         </div>
-        <div>
-          <p className="text-3xl font-medium text-[var(--color-success)]">+{stats.newThisWeek}</p>
-          <p className="text-sm text-[var(--color-gray-500)]">This week</p>
-        </div>
-        <div>
-          <p className="text-3xl font-medium text-[var(--color-black)]">{stats.activeContributors}</p>
-          <p className="text-sm text-[var(--color-gray-500)]">Contributors</p>
-        </div>
-        <div>
-          <p className="text-3xl font-medium text-[var(--color-accent)]">{stats.implementedThisMonth}</p>
-          <p className="text-sm text-[var(--color-gray-500)]">Implemented</p>
-        </div>
-      </section>
-
-      {/* Emerging Themes */}
-      <section className="mb-16">
-        <p className="pulse-label">Emerging Themes</p>
-        <div className="space-y-4">
-          {emergingThemes.map((item, index) => (
-            <div
-              key={item.theme.id}
-              className="p-6 bg-white rounded-2xl border border-[var(--color-gray-200)] card-hover cursor-pointer"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <span className={`theme-pill ${item.theme.color}`}>
-                    {item.theme.name}
-                  </span>
-                  <span className="text-sm text-[var(--color-gray-500)]">
-                    {item.theme.ideaCount} ideas
-                  </span>
-                  {item.momentum === 'strong' && (
-                    <span className="text-xs px-2 py-1 bg-[var(--color-success)]/10 text-[var(--color-success)] rounded-full">
-                      Strong momentum
-                    </span>
-                  )}
-                  {item.momentum === 'growing' && (
-                    <span className="text-xs px-2 py-1 bg-[var(--color-accent)]/10 text-[var(--color-accent-dim)] rounded-full">
-                      Growing
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-[var(--color-gray-700)] mb-4">
-                {item.insight}
-              </p>
-
-              {/* Contributors */}
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {item.contributors.slice(0, 4).map((contributor) => (
-                    <div
-                      key={contributor.id}
-                      className="w-8 h-8 rounded-full bg-[var(--color-gray-200)] border-2 border-white flex items-center justify-center text-xs font-medium text-[var(--color-gray-600)]"
-                      title={contributor.name}
-                    >
-                      {contributor.avatar}
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm text-[var(--color-gray-500)]">
-                  {item.contributors.map(c => c.name.split(' ')[0]).join(', ')}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Tensions */}
-      {tensions.length > 0 && (
-        <section className="mb-16">
-          <p className="pulse-label">Tensions to Watch</p>
-          {tensions.map((tension, index) => (
-            <div
-              key={index}
-              className="p-6 bg-white rounded-2xl border-l-4 border-l-[var(--color-warning)] border border-[var(--color-gray-200)]"
-            >
-              <h3 className="text-lg font-medium text-[var(--color-black)] mb-2">
-                {tension.title}
-              </h3>
-              <p className="text-[var(--color-gray-600)]">
-                {tension.description}
-              </p>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Recommended Actions */}
-      <section className="mb-16">
-        <p className="pulse-label">Recommended Actions</p>
-        <div className="space-y-3">
-          {recommendedActions.map((action, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-4 p-5 bg-white rounded-xl border border-[var(--color-gray-200)] hover:border-[var(--color-gray-300)] transition-colors cursor-pointer"
-            >
-              <div className={`
-                w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
-                ${action.priority === 'high'
-                  ? 'bg-[var(--color-error)]/10 text-[var(--color-error)]'
-                  : 'bg-[var(--color-gray-100)] text-[var(--color-gray-500)]'
-                }
-              `}>
-                {action.priority === 'high' ? '!' : <IconClock size={16} />}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-medium text-[var(--color-black)] mb-1">
-                  {action.title}
-                </h4>
-                <p className="text-sm text-[var(--color-gray-500)]">
-                  {action.description}
-                </p>
-              </div>
-              <IconArrowRight size={20} className="text-[var(--color-gray-400)]" />
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Active Challenges */}
-      <section className="mb-16">
-        <div className="flex items-center justify-between mb-4">
-          <p className="pulse-label mb-0">Active Challenges</p>
-          <Link href="/challenges" className="text-sm text-[var(--color-gray-500)] hover:text-[var(--color-black)]">
-            View all →
+        <nav className="flex items-center gap-8">
+          <Link href="/pulse" className="text-[#6B5D4D] hover:text-[#2C2416] transition-colors">
+            Pulse
           </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          {challenges.filter(c => c.status === 'active').map((challenge) => (
-            <div
-              key={challenge.id}
-              className="p-5 bg-white rounded-xl border border-[var(--color-gray-200)] hover:border-[var(--color-accent)] transition-colors cursor-pointer"
-            >
-              <h4 className="font-medium text-[var(--color-black)] mb-2">
-                {challenge.title}
-              </h4>
-              <p className="text-sm text-[var(--color-gray-500)] mb-4 line-clamp-2">
-                {challenge.description}
-              </p>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[var(--color-gray-500)]">
-                  {challenge.ideaCount} ideas · {challenge.participantCount} contributors
-                </span>
-                <span className="text-[var(--color-gray-400)]">
-                  Due {new Date(challenge.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Recent Ideas with Attribution */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <p className="pulse-label mb-0">Recent Ideas</p>
-          <Link href="/ideas" className="text-sm text-[var(--color-gray-500)] hover:text-[var(--color-black)]">
-            View all →
+          <Link
+            href="/companion"
+            className="px-5 py-2.5 bg-[#2C2416] text-white rounded-full hover:bg-[#3D3425] transition-colors"
+          >
+            Start contributing
           </Link>
-        </div>
-        <div className="space-y-3">
-          {ideas.slice(0, 5).map((idea) => (
+        </nav>
+      </header>
+
+      {/* Hero */}
+      <main className="max-w-5xl mx-auto px-6 pt-20 pb-32">
+        <div className="max-w-3xl">
+          <h1 className="text-5xl md:text-6xl font-light text-[#2C2416] leading-tight mb-8">
+            The easiest way for intelligence inside organizations to surface.
+          </h1>
+          <p className="text-xl text-[#6B5D4D] leading-relaxed mb-12 max-w-2xl">
+            Most organizations already contain enormous amounts of intelligence, insight,
+            and opportunity. The problem is friction. Surface removes it.
+          </p>
+          <div className="flex items-center gap-4">
             <Link
-              key={idea.id}
-              href={`/ideas/${idea.id}`}
-              className="flex items-start gap-4 p-5 bg-white rounded-xl border border-[var(--color-gray-200)] hover:border-[var(--color-accent)] hover:shadow-md transition-all"
+              href="/companion"
+              className="px-8 py-4 bg-[#2C2416] text-white rounded-full text-lg hover:bg-[#3D3425] transition-colors"
             >
-              {/* Contributor Avatar */}
-              <div
-                className="w-10 h-10 rounded-full bg-[var(--color-gray-200)] flex items-center justify-center text-sm font-medium text-[var(--color-gray-600)] flex-shrink-0"
-                title={idea.contributor.name}
-              >
-                {idea.contributor.avatar}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-[var(--color-black)]">
-                    {idea.contributor.name}
-                  </span>
-                  <span className="text-sm text-[var(--color-gray-400)]">
-                    {idea.contributor.role}
-                  </span>
-                </div>
-                <p className="text-[var(--color-gray-700)] mb-3 line-clamp-2">
-                  {idea.summary}
-                </p>
-                <div className="flex items-center gap-3">
-                  {idea.themes.map((theme) => (
-                    <span key={theme} className="theme-pill text-xs">
-                      {theme}
-                    </span>
-                  ))}
-                  <span className="text-xs text-[var(--color-gray-400)]">
-                    {idea.reactions.helpful} found helpful
-                  </span>
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="flex-shrink-0">
-                {idea.status === 'implemented' && (
-                  <span className="flex items-center gap-1 text-xs text-[var(--color-success)]">
-                    <IconCheck size={14} /> Implemented
-                  </span>
-                )}
-                {idea.status === 'building' && (
-                  <span className="text-xs px-2 py-1 bg-[var(--color-info)]/10 text-[var(--color-info)] rounded-full">
-                    Building
-                  </span>
-                )}
-                {idea.status === 'validating' && (
-                  <span className="text-xs px-2 py-1 bg-[var(--color-accent)]/10 text-[var(--color-accent-dim)] rounded-full">
-                    Validating
-                  </span>
-                )}
-                {idea.status === 'exploring' && (
-                  <span className="text-xs px-2 py-1 bg-[var(--color-info)]/10 text-[var(--color-info)] rounded-full">
-                    Exploring
-                  </span>
-                )}
-              </div>
+              Try the companion
             </Link>
-          ))}
+            <Link
+              href="/pulse"
+              className="px-8 py-4 text-[#2C2416] rounded-full text-lg border border-[#E8E0D5] hover:border-[#C9A962] transition-colors"
+            >
+              See the Pulse
+            </Link>
+          </div>
+        </div>
+      </main>
+
+      {/* The problem */}
+      <section className="bg-[#2C2416] py-24">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="max-w-3xl">
+            <p className="text-[#C9A962] text-sm uppercase tracking-wider mb-4">The problem</p>
+            <h2 className="text-3xl md:text-4xl text-white font-light leading-tight mb-8">
+              Ideas die inside organizations every day.
+            </h2>
+            <p className="text-xl text-white/70 leading-relaxed mb-8">
+              They die in Slack threads. In meeting notes nobody reads. In decks that get archived.
+              In hallway conversations that evaporate. In voice notes that go unheard.
+            </p>
+            <p className="text-xl text-white/70 leading-relaxed">
+              Not because they&apos;re bad ideas. Because organizations create friction
+              around expressing them.
+            </p>
+          </div>
         </div>
       </section>
+
+      {/* Two parts */}
+      <section className="py-24 bg-[#FFFBF5]">
+        <div className="max-w-5xl mx-auto px-6">
+          <p className="text-[#8B7355] text-sm uppercase tracking-wider mb-4">The solution</p>
+          <h2 className="text-3xl md:text-4xl text-[#2C2416] font-light leading-tight mb-16 max-w-2xl">
+            An AI-native system for organizational intelligence.
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Companion */}
+            <div className="bg-white rounded-3xl p-8 border border-[#E8E0D5]">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#C9A962] to-[#8B7355] flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl text-[#2C2416] mb-4">The Companion</h3>
+              <p className="text-[#6B5D4D] leading-relaxed mb-6">
+                Contributing intelligence should feel lighter than sending a Slack message.
+                The Companion is a warm AI that helps you articulate observations, frustrations,
+                and opportunities through natural conversation.
+              </p>
+              <p className="text-[#A09080] text-sm">
+                Type, speak, or share screenshots. The AI helps clarify and connect.
+              </p>
+            </div>
+
+            {/* Pulse */}
+            <div className="bg-white rounded-3xl p-8 border border-[#E8E0D5]">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#C9A962] to-[#8B7355] flex items-center justify-center mb-6">
+                <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl text-[#2C2416] mb-4">The Pulse</h3>
+              <p className="text-[#6B5D4D] leading-relaxed mb-6">
+                Leadership doesn&apos;t need another dashboard. They need to understand what the
+                organization is trying to tell them. The Pulse synthesizes signals into
+                narrative intelligence.
+              </p>
+              <p className="text-[#A09080] text-sm">
+                Recurring tensions. Emerging patterns. Blind spots. Recommendations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Not this */}
+      <section className="py-24 bg-[#F5F0E8]">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <p className="text-[#8B7355] text-sm uppercase tracking-wider mb-4">What we&apos;re not</p>
+            <h2 className="text-3xl md:text-4xl text-[#2C2416] font-light leading-tight mb-8">
+              Not another idea management platform.
+            </h2>
+            <p className="text-lg text-[#6B5D4D] leading-relaxed mb-12">
+              We&apos;re not building submission workflows, voting systems, governance layers,
+              or innovation portfolios. The market is full of those. Surface is something different.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+              <div className="p-4">
+                <p className="text-[#A09080] line-through mb-2">Submission forms</p>
+                <p className="text-[#2C2416]">Natural conversation</p>
+              </div>
+              <div className="p-4">
+                <p className="text-[#A09080] line-through mb-2">Dashboards</p>
+                <p className="text-[#2C2416]">Narrative synthesis</p>
+              </div>
+              <div className="p-4">
+                <p className="text-[#A09080] line-through mb-2">Voting systems</p>
+                <p className="text-[#2C2416]">Pattern recognition</p>
+              </div>
+              <div className="p-4">
+                <p className="text-[#A09080] line-through mb-2">Workflows</p>
+                <p className="text-[#2C2416]">Organic surfacing</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The feeling */}
+      <section className="py-24 bg-[#FFFBF5]">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="max-w-3xl">
+            <p className="text-[#8B7355] text-sm uppercase tracking-wider mb-4">The feeling</p>
+            <h2 className="text-3xl md:text-4xl text-[#2C2416] font-light leading-tight mb-8">
+              &ldquo;Like sending a voice note to a very smart, kind colleague.&rdquo;
+            </h2>
+            <p className="text-xl text-[#6B5D4D] leading-relaxed mb-8">
+              Innovation is emotional. If the tool feels corporate, bureaucratic, or evaluative,
+              people stop contributing. Surface is designed to feel warm, human, and safe.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {['Immediate', 'Warm', 'Low-pressure', 'Intelligent', 'Forgiving', 'Conversational'].map((word) => (
+                <span
+                  key={word}
+                  className="px-4 py-2 bg-white border border-[#E8E0D5] rounded-full text-[#6B5D4D]"
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 bg-[#2C2416]">
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <h2 className="text-3xl md:text-4xl text-white font-light leading-tight mb-8">
+            Let intelligence surface.
+          </h2>
+          <div className="flex items-center justify-center gap-4">
+            <Link
+              href="/companion"
+              className="px-8 py-4 bg-white text-[#2C2416] rounded-full text-lg hover:bg-[#F5F0E8] transition-colors"
+            >
+              Try the companion
+            </Link>
+            <Link
+              href="/pulse"
+              className="px-8 py-4 text-white rounded-full text-lg border border-white/30 hover:border-white/60 transition-colors"
+            >
+              See the Pulse
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 bg-[#FFFBF5] border-t border-[#E8E0D5]">
+        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C9A962] to-[#8B7355] flex items-center justify-center">
+              <span className="text-white text-sm font-medium">S</span>
+            </div>
+            <span className="text-[#2C2416] font-medium">Surface</span>
+          </div>
+          <p className="text-sm text-[#A09080]">
+            AI-native organizational intelligence
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
