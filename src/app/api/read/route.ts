@@ -1,10 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { NextResponse } from 'next/server';
 import { createServiceClient, createClient } from '@/lib/supabase/server';
+import {
+  generateEmbedding,
+  clusterSignals,
+  sortClusters,
+  categorizeClusterStrength,
+  extractFromCluster,
+  generateNarrative,
+  generateRecommendations,
+  type SignalWithEmbedding,
+  type ClusterExtraction,
+} from '@/lib/synthesis';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+interface SignalRow {
+  id: string;
+  contribution_card: { summary?: string } | null;
+  themes: string[];
+  embedding: string | number[] | null;
+  created_at: string;
+}
 
 // GET - Retrieve the latest Read for the user's tenant
 export async function GET() {
@@ -16,7 +30,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's tenant
+    // Get user's profile
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('tenant_id, role')
@@ -27,15 +41,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Type assertion for profile data
     const profile = profileData as { tenant_id: string; role: string };
 
     // Only leadership can view The Read
-    if (profile.role !== 'leadership' && profile.role !== 'admin' && profile.role !== 'cos') {
+    if (!['leadership', 'admin', 'cos'].includes(profile.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get the latest read for this tenant
+    // Get the latest published read
     const { data: latestRead } = await supabase
       .from('reads')
       .select('*')
@@ -45,13 +58,13 @@ export async function GET() {
       .limit(1)
       .single();
 
-    // Get signal count for this tenant (anonymous - no identity data)
+    // Get signal count
     const { count: signalCount } = await supabase
       .from('signals')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', profile.tenant_id);
 
-    // Get unique themes as proxy for departments
+    // Get unique themes
     const { data: signalsData } = await supabase
       .from('signals')
       .select('themes')
@@ -74,8 +87,8 @@ export async function GET() {
   }
 }
 
-// POST - Generate a new Read synthesis
-export async function POST(request: NextRequest) {
+// POST - Generate a new Read using 2-stage synthesis pipeline
+export async function POST() {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -84,39 +97,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's tenant
-    const { data: profileData2, error: profileError2 } = await supabase
+    // Get user's profile
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('tenant_id, role')
       .eq('id', user.id)
       .single();
 
-    if (profileError2 || !profileData2) {
+    if (profileError || !profileData) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // Type assertion for profile data
-    const profile = profileData2 as { tenant_id: string; role: string };
+    const profile = profileData as { tenant_id: string; role: string };
 
     // Only leadership can generate The Read
-    if (profile.role !== 'leadership' && profile.role !== 'admin' && profile.role !== 'cos') {
+    if (!['leadership', 'admin', 'cos'].includes(profile.role)) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // Get all signals from the past week
+    const serviceClient = createServiceClient();
+
+    // Get signals from the past week
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
-    interface SignalRow {
-      id: string;
-      contribution_card: { summary?: string } | null;
-      themes: string[];
-      created_at: string;
-    }
-
     const { data: signalsData } = await supabase
       .from('signals')
-      .select('id, contribution_card, themes, created_at')
+      .select('id, contribution_card, themes, embedding, created_at')
       .eq('tenant_id', profile.tenant_id)
       .gte('created_at', oneWeekAgo.toISOString())
       .order('created_at', { ascending: false });
@@ -131,110 +138,154 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Prepare signal summaries for synthesis (no identity information)
-    const signalSummaries = signals.map(s => ({
-      summary: s.contribution_card?.summary || 'No summary',
-      themes: s.themes || [],
-      date: s.created_at,
+    // ============================================
+    // STAGE 1: Deterministic Clustering
+    // ============================================
+
+    // Prepare signals with embeddings
+    const signalsWithEmbeddings: SignalWithEmbedding[] = [];
+
+    for (const signal of signals) {
+      const summary = signal.contribution_card?.summary || '';
+      if (!summary) continue;
+
+      let embedding: number[];
+
+      if (signal.embedding) {
+        // Parse existing embedding
+        embedding = typeof signal.embedding === 'string'
+          ? JSON.parse(signal.embedding)
+          : signal.embedding;
+      } else {
+        // Generate embedding if missing (backfill)
+        try {
+          embedding = await generateEmbedding(summary);
+          // Store for future use
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const signalsTable = serviceClient.from('signals') as any;
+          await signalsTable
+            .update({ embedding: JSON.stringify(embedding) })
+            .eq('id', signal.id);
+        } catch (err) {
+          console.error('Failed to generate embedding for signal', signal.id, err);
+          continue;
+        }
+      }
+
+      signalsWithEmbeddings.push({
+        id: signal.id,
+        summary,
+        themes: signal.themes || [],
+        embedding,
+        created_at: signal.created_at,
+      });
+    }
+
+    if (signalsWithEmbeddings.length === 0) {
+      return NextResponse.json({
+        read: null,
+        signalCount: signals.length,
+        message: 'Could not process signals for synthesis',
+      });
+    }
+
+    // Cluster signals by semantic similarity
+    const clusters = clusterSignals(signalsWithEmbeddings, 0.70);
+    const sortedClusters = sortClusters(clusters);
+    const categorizedClusters = categorizeClusterStrength(sortedClusters);
+
+    // ============================================
+    // STAGE 2: Per-Cluster Extraction
+    // ============================================
+
+    const extractions: ClusterExtraction[] = [];
+
+    // Process top clusters (limit to avoid timeout)
+    const clustersToProcess = categorizedClusters.slice(0, 8);
+
+    for (const cluster of clustersToProcess) {
+      try {
+        const extraction = await extractFromCluster(cluster);
+        extractions.push(extraction);
+
+        // Update signals with cluster_id
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const signalsTable = serviceClient.from('signals') as any;
+        await signalsTable
+          .update({ cluster_id: cluster.id })
+          .in('id', cluster.signals.map(s => s.id));
+      } catch (err) {
+        console.error('Failed to extract from cluster', cluster.id, err);
+      }
+    }
+
+    if (extractions.length === 0) {
+      return NextResponse.json({
+        read: null,
+        signalCount: signals.length,
+        message: 'Failed to extract patterns from signals',
+      });
+    }
+
+    // ============================================
+    // Generate Narrative & Recommendations
+    // ============================================
+
+    const periodStart = oneWeekAgo;
+    const periodEnd = new Date();
+
+    const [narrativeResult, recommendations] = await Promise.all([
+      generateNarrative(extractions, signals.length, periodStart, periodEnd),
+      generateRecommendations(extractions),
+    ]);
+
+    // ============================================
+    // Save The Read
+    // ============================================
+
+    // Format tensions for storage
+    const topTensions = extractions.map((e, i) => ({
+      id: `t${i + 1}`,
+      title: e.title,
+      synthesis: e.synthesis,
+      observedAcross: e.themes,
+      repeatedPhrases: e.repeatedPhrases,
+      intensity: e.intensity,
+      momentum: e.momentum,
+      blindSpot: e.blindSpot,
+      suggestedAction: e.suggestedAction,
+      signalCount: e.signalCount,
+      signalStrength: categorizedClusters.find(c => c.id === e.clusterId)?.strength || 'emerging',
     }));
 
-    // Generate The Read using Claude
-    const synthesisPrompt = `You are analyzing anonymous organizational signals to create "The Read" - a weekly editorial synthesis for leadership.
+    // Identify emerging patterns (single-signal clusters)
+    const emergingPatterns = categorizedClusters
+      .filter(c => c.strength === 'singular')
+      .slice(0, 3)
+      .map(c => c.signals[0]?.summary || 'Unnamed pattern');
 
-SIGNALS (${signals.length} total from the past week):
-${signalSummaries.map((s, i) => `${i + 1}. "${s.summary}" [Themes: ${s.themes.join(', ')}]`).join('\n')}
+    // Blind spots from extractions
+    const blindSpots = extractions
+      .filter(e => e.blindSpot)
+      .map(e => e.blindSpot as string)
+      .slice(0, 3);
 
-Generate a comprehensive Read that includes:
-
-1. NARRATIVE: A 2-3 sentence executive summary of what the organization is trying to tell leadership this week. Write in second person ("You're hearing..." not "The organization is...").
-
-2. MOOD: Overall organizational mood (one of: concerned, frustrated, optimistic, energized, uncertain, determined) and 1-2 notable shifts or patterns.
-
-3. TOP TENSIONS: Identify 2-4 key tensions or patterns. For each:
-   - title: Short, memorable name
-   - synthesis: 2-3 sentences explaining the tension
-   - themes: Which themes it appears in
-   - intensity: low, moderate, high, or critical
-   - momentum: emerging, growing, sustained, or declining
-   - blindSpot: What leadership might be missing
-   - suggestedAction: A specific, actionable recommendation
-
-4. EMERGING PATTERNS: 2-3 new patterns that are just starting to appear
-
-5. BLIND SPOTS: 2-3 things leadership might be missing
-
-6. RECOMMENDATIONS: 3 prioritized action items
-
-Respond in JSON format:
-{
-  "narrative": "string",
-  "mood": {
-    "overall": "concerned|frustrated|optimistic|energized|uncertain|determined",
-    "shifts": ["string", "string"]
-  },
-  "topTensions": [
-    {
-      "id": "t1",
-      "title": "string",
-      "synthesis": "string",
-      "observedAcross": ["theme1", "theme2"],
-      "repeatedPhrases": ["phrase1", "phrase2"],
-      "intensity": "low|moderate|high|critical",
-      "momentum": "emerging|growing|sustained|declining",
-      "blindSpot": "string",
-      "suggestedAction": "string"
-    }
-  ],
-  "emergingPatterns": ["string"],
-  "blindSpots": ["string"],
-  "recommendations": ["string"]
-}`;
-
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: synthesisPrompt }],
-    });
-
-    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
-
-    let synthesis;
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      synthesis = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-    } catch {
-      console.error('Failed to parse synthesis JSON');
-      return NextResponse.json({ error: 'Failed to generate synthesis' }, { status: 500 });
-    }
-
-    if (!synthesis) {
-      return NextResponse.json({ error: 'Failed to generate synthesis' }, { status: 500 });
-    }
-
-    // Use service client to write to reads table
-    const serviceClient = createServiceClient();
-
-    const now = new Date();
-    const periodStart = oneWeekAgo.toISOString();
-    const periodEnd = now.toISOString();
-
-    // Create the Read
-    // Note: Using type assertion because Supabase types aren't properly recognized
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const readsTable = serviceClient.from('reads') as any;
     const { data: newRead, error: insertError } = await readsTable
       .insert({
         tenant_id: profile.tenant_id,
-        narrative: synthesis.narrative,
-        mood: synthesis.mood,
-        top_tensions: synthesis.topTensions,
-        emerging_patterns: synthesis.emergingPatterns,
-        blind_spots: synthesis.blindSpots,
-        recommendations: synthesis.recommendations,
-        period_start: periodStart,
-        period_end: periodEnd,
+        narrative: narrativeResult.narrative,
+        mood: narrativeResult.mood,
+        top_tensions: topTensions,
+        emerging_patterns: emergingPatterns,
+        blind_spots: blindSpots,
+        recommendations,
+        period_start: periodStart.toISOString(),
+        period_end: periodEnd.toISOString(),
         signal_count: signals.length,
-        status: 'published',
+        contributor_count: signalsWithEmbeddings.length, // Approximation
+        status: 'published', // For MVP; Stage 4 adds 'review' state
       })
       .select()
       .single();
@@ -244,16 +295,15 @@ Respond in JSON format:
       return NextResponse.json({ error: 'Failed to save Read' }, { status: 500 });
     }
 
-    // Get unique themes
-    const themes = new Set<string>();
-    signals.forEach(s => {
-      s.themes?.forEach((t: string) => themes.add(t));
-    });
+    // Collect all themes
+    const allThemes = new Set<string>();
+    extractions.forEach(e => e.themes.forEach(t => allThemes.add(t)));
 
     return NextResponse.json({
       read: newRead,
       signalCount: signals.length,
-      themes: Array.from(themes),
+      themes: Array.from(allThemes),
+      clusterCount: clusters.length,
     });
   } catch (error) {
     console.error('Read generation error:', error);

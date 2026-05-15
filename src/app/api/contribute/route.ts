@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { createServiceClient, createClient } from '@/lib/supabase/server';
+import { generateEmbedding } from '@/lib/synthesis/embeddings';
 import type { ContributionCard, QuotePermission } from '@/lib/supabase/types';
 
 const anthropic = new Anthropic({
@@ -127,6 +128,20 @@ Respond in JSON:
       if (insertError) {
         console.error('Contribution insert error:', insertError);
         return NextResponse.json({ error: 'Failed to save contribution' }, { status: 500 });
+      }
+
+      // Generate embedding for the signal (async, non-blocking for response)
+      // Uses the summary for embedding as it's the refined insight
+      try {
+        const embedding = await generateEmbedding(card.summary);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const signalsTable = serviceClient.from('signals') as any;
+        await signalsTable
+          .update({ embedding: JSON.stringify(embedding) })
+          .eq('id', signalId);
+      } catch (embeddingError) {
+        // Log but don't fail the contribution - embedding can be regenerated later
+        console.error('Embedding generation error:', embeddingError);
       }
 
       // Update the conversation to mark it as contributed

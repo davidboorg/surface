@@ -11,6 +11,7 @@
 -- =============================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "vector" WITH SCHEMA extensions;
 
 -- =============================================================
 -- TENANTS (Organizations using Surface)
@@ -64,6 +65,10 @@ CREATE TABLE signals (
   synthesis_status TEXT DEFAULT 'pending'
     CHECK (synthesis_status IN ('pending', 'clustered', 'used', 'excluded')),
 
+  -- Vector embedding for semantic clustering
+  embedding extensions.vector(1536),       -- OpenAI text-embedding-3-small dimension
+  cluster_id UUID,                          -- Assigned during synthesis
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
 
@@ -77,6 +82,7 @@ CREATE INDEX idx_signals_tenant ON signals(tenant_id);
 CREATE INDEX idx_signals_tenant_created ON signals(tenant_id, created_at DESC);
 CREATE INDEX idx_signals_themes ON signals USING GIN(themes);
 CREATE INDEX idx_signals_synthesis_status ON signals(tenant_id, synthesis_status);
+CREATE INDEX idx_signals_embedding ON signals USING ivfflat (embedding extensions.vector_cosine_ops) WITH (lists = 100);
 
 -- =============================================================
 -- SIGNAL_LINKS (Bridge table — SERVICE ROLE ONLY)
