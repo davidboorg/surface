@@ -226,6 +226,12 @@ CREATE POLICY "Users can view own tenant"
   ON tenants FOR SELECT
   USING (id = (SELECT tenant_id FROM profiles WHERE id = auth.uid()));
 
+-- Allow authenticated users to view tenants (needed for onboarding before profile exists)
+CREATE POLICY "Authenticated users can view tenants"
+  ON tenants FOR SELECT
+  TO authenticated
+  USING (true);
+
 -- ----- PROFILES -----
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
